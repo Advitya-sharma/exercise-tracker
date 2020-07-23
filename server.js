@@ -44,27 +44,30 @@ app.post("/api/exercise/new-user", (req, res) => {
   const username = req.body.username;
 
   console.log(username);
-  const newUser = new userInfo({ username: username });
-  newUser.save(function (err) {
+  userInfo.create({ username: username }, (err, data) => {
     if (err) {
       console.log(err);
       return;
     }
-    res.send("h");
-  });
-
-  userInfo.find({}, (err, data) => {
-    if (err) {
-      return console.error(err);
-    } else {
-      console.log("hi");
+    else {
       res.send("h");
-      console.log(data);
     }
   });
+
+  //   userInfo.find({}, (err, data) => {
+  //     if (err) {
+  //       return console.error(err);
+  //     } else {
+  //       console.log("hi");
+  //       res.send("h");
+  //       console.log(data);
+  //     }
+  //   });
 });
 
-app.post("/api/exercise/new-user", (req, res) => {
+//5f197ccfb0481002300a026f
+
+app.post("/api/exercise/add", (req, res) => {
   const userId = req.body.userId;
   const description = req.body.description;
   const duration = req.body.duration;
@@ -78,12 +81,12 @@ app.post("/api/exercise/new-user", (req, res) => {
 
   userInfo.findById(userId, function (err, user) {
     if (err) throw err;
-    userInfo.log.push({
+    user.log.push({
       description: description,
       duration: duration,
       date: date
     });
-    userInfo.save(function (err, user) {
+    user.save(function (err, user) {
       if (err) console.error(err);
     });
   });
@@ -134,3 +137,5 @@ app.use((err, req, res, next) => {
 const listener = app.listen(process.env.PORT, () => {
   console.log("Your app is listening on port " + listener.address().port);
 });
+
+console.log(mongoose.connection.readyState);
