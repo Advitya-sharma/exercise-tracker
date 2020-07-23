@@ -1,18 +1,41 @@
+require("dotenv").config();
 const express = require("express");
 const app = express();
 const bodyParser = require("body-parser");
-require("dotenv").config();
 const cors = require("cors");
-
 const mongoose = require("mongoose");
-mongoose.connect(process.env.MLAB_URI);
+
+
+//setting up database
+
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+});
+
+const Schema = mongoose.Schema;
+
+const logInfo = new Schema({
+  description: { type: String },
+  duration: { type: Number },
+  date: { type: String }
+});
+
+const userInfo = new Schema({
+  username: { type: String, required: true, unique: true },
+  from: { type: String },
+  to: { type: String },
+  count: { type: Number },
+  log: [logInfo]
+});
+
+
 
 app.use(cors());
-
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
-
 app.use(express.static("public"));
+
 app.get("/", (req, res) => {
   res.sendFile(__dirname + "/views/index.html");
 });
