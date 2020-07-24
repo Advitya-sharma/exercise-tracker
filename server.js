@@ -5,7 +5,6 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 const mongoose = require("mongoose");
 
-
 //setting up database
 
 mongoose.connect(process.env.MONGO_URI, {
@@ -15,19 +14,25 @@ mongoose.connect(process.env.MONGO_URI, {
 
 const Schema = mongoose.Schema;
 
-const logInfoSchema = new Schema({
-  description: { type: String, required: true, default: "" },
-  duration: { type: Number, required: true, default: "" },
-  date: { type: String }
-});
+const logInfoSchema = new Schema(
+  {
+    description: { type: String, required: true, default: "" },
+    duration: { type: Number, required: true, default: 0 },
+    date: { type: String }
+  },
+  { versionKey: false }
+);
 
-const userInfoSchema = new Schema({
-  username: { type: String, required: true, unique: true },
-  from: { type: String },
-  to: { type: String },
-  count: { type: Number },
-  log: [logInfoSchema]
-});
+const userInfoSchema = new Schema(
+  {
+    username: { type: String, required: true, unique: true },
+    from: { type: String },
+    to: { type: String },
+    count: { type: Number, default: 0 },
+    log: [logInfoSchema]
+  },
+  { versionKey: false }
+);
 
 const userInfo = mongoose.model("userInfo", userInfoSchema);
 
@@ -48,9 +53,8 @@ app.post("/api/exercise/new-user", (req, res) => {
     if (err) {
       console.log(err);
       return;
-    }
-    else {
-      res.send("h");
+    } else {
+      res.json({ _id: data._id, username: data.username });
     }
   });
 
@@ -65,39 +69,83 @@ app.post("/api/exercise/new-user", (req, res) => {
   //   });
 });
 
-//5f197ccfb0481002300a026f
+//5f1a25ae38158a0090b104b3
 
 app.post("/api/exercise/add", (req, res) => {
   const userId = req.body.userId;
   const description = req.body.description;
-  const duration = req.body.duration;
+  const duration = parseInt(req.body.duration, 0);
   let date;
 
-  if (req.body.date) {
-    date = req.body.date;
-  } else {
-    date = String(new Date()).substring(0, 15);
+  if (!userId) {
+    res.send("enter userID");
+    return;
+  }
+  if (!description) {
+    res.send("enter description");
+    return;
+  }
+  if (!duration) {
+    res.send("enter duration");
+    return;
   }
 
-  userInfo.findById(userId, function (err, user) {
+  if (req.body.date) {
+    date = new Date(req.body.date);
+    if (!(date instanceof Date && !isNaN(date))) {
+      res.send("enter valid date");
+      return;
+    }
+  } else {
+    date = new Date();
+  }
+
+  date = date.toString().substring(0, 15);
+
+  userInfo.findByIdAndUpdate(userId, { $inc: { count: 1 } }, (err, data) => {
+    if (err) return console.error(err);
+  });
+
+  userInfo.findById(userId, function(err, user) {
     if (err) throw err;
     user.log.push({
       description: description,
       duration: duration,
       date: date
     });
-    user.save(function (err, user) {
+    user.save(function(err, user) {
       if (err) console.error(err);
+      else {
+        res.json({
+          _id: user._id,
+          username: user.username,
+          date: date,
+          duration: duration,
+          description: description
+        });
+        return;
+      }
     });
   });
 });
 
-app.get("/api/exercise/log?userId&from&to&limit", (req, res) => {
+app.get("/api/exercise/users", (req, res) => {
+  userInfo.find({}, (err, data) => {
+    if (err) return console.error(err);
+    else {
+      res.json(data);
+      return;
+    }
+  });
+});
+
+app.get("/api/exercise/log", (req, res) => {
   const userId = req.query.userId;
+  console.log(userId);
   if (!userId) {
     res.send("enter user id");
   } else {
-    userInfo.find({ userId: userId }, (err, data) => {
+    userInfo.findById(userId, (err, data) => {
       if (err) {
         return err;
       } else {
@@ -116,7 +164,6 @@ app.get("/api/exercise/log?userId&from&to&limit", (req, res) => {
 //Error Handling middleware
 app.use((err, req, res, next) => {
   let errCode, errMessage;
-
   if (err.errors) {
     // mongoose validation error
     errCode = 400; // bad request
