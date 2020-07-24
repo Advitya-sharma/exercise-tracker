@@ -26,8 +26,6 @@ const logInfoSchema = new Schema(
 const userInfoSchema = new Schema(
   {
     username: { type: String, required: true, unique: true },
-    from: { type: String },
-    to: { type: String },
     count: { type: Number, default: 0 },
     log: [logInfoSchema]
   },
@@ -106,14 +104,14 @@ app.post("/api/exercise/add", (req, res) => {
     if (err) return console.error(err);
   });
 
-  userInfo.findById(userId, function(err, user) {
+  userInfo.findById(userId, function (err, user) {
     if (err) throw err;
     user.log.push({
       description: description,
       duration: duration,
       date: date
     });
-    user.save(function(err, user) {
+    user.save(function (err, user) {
       if (err) console.error(err);
       else {
         res.json({
@@ -139,9 +137,35 @@ app.get("/api/exercise/users", (req, res) => {
   });
 });
 
+let dateValidator = obj => {
+  return obj instanceof Date && !isNaN(obj);
+};
+
+let logProcessing = (log, to, from, limit) => {
+  if (limit < 0) {
+    limit = 0;
+  }
+
+  if (dateValidator(to) && dateValidator(from)) {
+    return log.filter(date => new Date(date["date"]) >= from && new Date(date["date"]) <= to).slice(0, limit);
+  } else if (dateValidator(from)) {
+    return log.filter(date => new Date(date["date"]) >= from).slice(0, limit);
+  } else if (dateValidator(to)) {
+    return log.filter(date => new Date(date["date"]) <= to).slice(0, limit);
+  } else {
+    return log.slice(0, limit);
+  }
+};
+
 app.get("/api/exercise/log", (req, res) => {
   const userId = req.query.userId;
-  console.log(userId);
+  const to = new Date(req.query.to);
+  const from = new Date(req.query.from);
+  const limit = req.query.limit;
+  let doc;
+
+  console.log(limit);
+
   if (!userId) {
     res.send("enter user id");
   } else {
@@ -149,40 +173,22 @@ app.get("/api/exercise/log", (req, res) => {
       if (err) {
         return err;
       } else {
-        res.json(data);
+        doc = {
+          _id: data._id,
+          username: data.username,
+          count: 5,
+          log: logProcessing(data.log, to, from, limit)
+        };
+        res.json(doc);
       }
     });
   }
 });
 
-// Not found middleware
-
-// app.use((req, res, next) => {
-//   return next({ status: 404, message: "not found" });
-// });
-
-//Error Handling middleware
-app.use((err, req, res, next) => {
-  let errCode, errMessage;
-  if (err.errors) {
-    // mongoose validation error
-    errCode = 400; // bad request
-    const keys = Object.keys(err.errors);
-    // report the first validation error
-    errMessage = err.errors[keys[0]].message;
-  } else {
-    // generic or custom error
-    errCode = err.status || 500;
-    errMessage = err.message || "Internal Server Error";
-  }
-  res
-    .status(errCode)
-    .type("txt")
-    .send(errMessage);
-});
 
 const listener = app.listen(process.env.PORT, () => {
   console.log("Your app is listening on port " + listener.address().port);
 });
 
 console.log(mongoose.connection.readyState);
+
