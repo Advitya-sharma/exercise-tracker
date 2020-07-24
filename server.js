@@ -26,7 +26,6 @@ const logInfoSchema = new Schema(
 const userInfoSchema = new Schema(
   {
     username: { type: String, required: true, unique: true },
-    count: { type: Number, default: 0 },
     log: [logInfoSchema]
   },
   { versionKey: false }
@@ -55,19 +54,8 @@ app.post("/api/exercise/new-user", (req, res) => {
       res.json({ _id: data._id, username: data.username });
     }
   });
-
-  //   userInfo.find({}, (err, data) => {
-  //     if (err) {
-  //       return console.error(err);
-  //     } else {
-  //       console.log("hi");
-  //       res.send("h");
-  //       console.log(data);
-  //     }
-  //   });
 });
 
-//5f1a25ae38158a0090b104b3
 
 app.post("/api/exercise/add", (req, res) => {
   const userId = req.body.userId;
@@ -90,7 +78,7 @@ app.post("/api/exercise/add", (req, res) => {
 
   if (req.body.date) {
     date = new Date(req.body.date);
-    if (!(date instanceof Date && !isNaN(date))) {
+    if (!dateValidator(date)) {
       res.send("enter valid date");
       return;
     }
@@ -99,10 +87,6 @@ app.post("/api/exercise/add", (req, res) => {
   }
 
   date = date.toString().substring(0, 15);
-
-  userInfo.findByIdAndUpdate(userId, { $inc: { count: 1 } }, (err, data) => {
-    if (err) return console.error(err);
-  });
 
   userInfo.findById(userId, function (err, user) {
     if (err) throw err;
@@ -147,7 +131,11 @@ let logProcessing = (log, to, from, limit) => {
   }
 
   if (dateValidator(to) && dateValidator(from)) {
-    return log.filter(date => new Date(date["date"]) >= from && new Date(date["date"]) <= to).slice(0, limit);
+    return log
+      .filter(
+        date => new Date(date["date"]) >= from && new Date(date["date"]) <= to
+      )
+      .slice(0, limit);
   } else if (dateValidator(from)) {
     return log.filter(date => new Date(date["date"]) >= from).slice(0, limit);
   } else if (dateValidator(to)) {
@@ -176,8 +164,8 @@ app.get("/api/exercise/log", (req, res) => {
         doc = {
           _id: data._id,
           username: data.username,
-          count: 5,
-          log: logProcessing(data.log, to, from, limit)
+          count: logProcessing(data.log, to, from, limit).length,
+          log: logProcessing(data.log, to, from, limit),
         };
         res.json(doc);
       }
@@ -185,10 +173,7 @@ app.get("/api/exercise/log", (req, res) => {
   }
 });
 
-
 const listener = app.listen(process.env.PORT, () => {
   console.log("Your app is listening on port " + listener.address().port);
 });
-
-console.log(mongoose.connection.readyState);
 
